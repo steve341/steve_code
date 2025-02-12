@@ -1,0 +1,24 @@
+import functions_framework
+from google.cloud import bigquery
+
+# Initialize BigQuery Client
+client = bigquery.Client()
+
+@functions_framework.http
+def etl_bigquery(request):
+    """
+    Extracts Google Trends data, transforms it, and loads it into a new BigQuery table.
+    """
+    query = """
+    CREATE OR REPLACE TABLE `my_project.my_etl_dataset.cleaned_trends` AS 
+    SELECT country_code, term, MAX(score) AS max_score
+    FROM `bigquery-public-data.google_trends.international_top_rising_terms`
+    WHERE refresh_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) 
+    GROUP BY country_code, term;
+    """
+
+    # Run the query
+    query_job = client.query(query)
+    query_job.result()  # Wait for completion
+
+    return "ETL Process Completed Successfully", 200
